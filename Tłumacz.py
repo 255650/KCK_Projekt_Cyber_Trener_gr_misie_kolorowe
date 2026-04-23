@@ -46,16 +46,21 @@ def speakers():
 
 def recognize(language):
     rec = sr.Recognizer()
-    rec.energy_threshold = 250
-    rec.dynamic_energy_threshold = False
+    rec.energy_threshold = 300
+    rec.dynamic_energy_threshold = True
+    rec.pause_threshold = 0.8
 
     try:
         with sr.Microphone() as source:
             rec.adjust_for_ambient_noise(source, duration=0.7)
-            audio_data = rec.listen(source)
+            audio_data = rec.listen(source,timeout=6,phrase_time_limit=6)
 
             text =  rec.recognize_google(audio_data, language=language)
             return text.lower().strip()
+    except sr.WaitTimeoutError:
+        return "timeout"
+    except sr.UnknownValueError:
+        return "unknown"
     except Exception:
         return "error"
 
@@ -66,6 +71,18 @@ def speak(text):
         engine.iterate()
     engine.endLoop()
 
+KEYWORDS_REPEAT = {"rumuński martwy ciąg", "romanian deadlift", "bywaj", "goodbye"}
+RDL_KEYWORDS_PL = {"rumuński martwy ciąg", "romanian deadlift"}
+RDL_KEYWORDS_EN = {"romanian deadlift", "rumuński martwy ciąg"}
+
+def should_repeat(text):
+    return text in KEYWORDS_REPEAT
+
+def is_rdl(text):
+    return text in RDL_KEYWORDS_PL or text in RDL_KEYWORDS_EN
+
+def normalize(text):
+    return text.replace(" ", "").lower().strip()
 
 if __name__ == "__main__":
     engine = pyttsx3.init()
@@ -77,6 +94,7 @@ if __name__ == "__main__":
         print("Mikrofon nie działa")
 
     text = ''
+    text = normalize(text)
     print("Aby wybrać język powiedz polski lub angielski")
     speak("Aby wybrać język powiedz polski lub angielski")
     text = recognize("pl-PL")
@@ -96,12 +114,18 @@ if __name__ == "__main__":
                     text.lower().strip()
                     if text == "angielski": break
                     print("pl> " + text)
-                    speak(text)
+                    if is_rdl(text):
+                        msg = "Wybrano rumuński martwy ciąg"
+                        print(msg)
+                        engine.setProperty('voice', voices[0].id)
+                        speak(msg)
+                        continue
+                    if should_repeat(text): speak(text)
                     translator_pl_to_en = Translator(from_lang="pl", to_lang="en")
                     translated = translator_pl_to_en.translate(text).lower().strip()
                     engine.setProperty('voice', voices[1].id)
                     print("en> " + translated)
-                    speak(translated)
+                    if should_repeat(text) or should_repeat(translated): speak(translated)
                     engine.setProperty('voice', voices[0].id)
         elif text == "angielski":
             engine.setProperty('voice', voices[1].id)
@@ -121,12 +145,18 @@ if __name__ == "__main__":
                         text = "polski"
                         break
                     print("en> " + text)
-                    speak(text)
+                    if is_rdl(text):
+                        msg = "Selected Romanian deadlift"
+                        print(msg)
+                        engine.setProperty('voice', voices[1].id)
+                        speak(msg)
+                        continue
+                    if should_repeat(text): speak(text)
                     translator_en_to_pl = Translator(from_lang="en", to_lang="pl")
                     translated = translator_en_to_pl.translate(text).lower().strip()
                     engine.setProperty('voice', voices[0].id)
                     print("pl> " + translated)
-                    speak(translated)
+                    if should_repeat(text) or should_repeat(translated): speak(translated)
                     engine.setProperty('voice', voices[1].id)
         elif text == "bywaj" or text == "goodbye":
             break
