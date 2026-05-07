@@ -1,42 +1,45 @@
 import cv2
-import subprocess
+import time
 
 class CameraError(Exception):
     pass
 
-def video_divaces_count():
-    result = subprocess.run(["wmic", "path", "Win32_PnPEntity", "where", "Service='usbvideo'", "get", "Name"],
-    capture_output = True, text=True)
+def try_open_camera(index):
+    cap = cv2.VideoCapture(index, cv2.CAP_MSMF)
 
-    lines = result.stdout.splitlines()[1:]
-    count = 0
-    for line in lines:
-        line = line.strip()
-        if line:
-            count+=1
-    return count
+    if not cap.isOpened():
+        return None
 
-def find_cameras():
-    devices_number = video_divaces_count()
+    # Wymuszenie rozdzielczości – kluczowe na Windowsie
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+    # Timeout 1 sekunda na pierwszą klatkę
+    start = time.time()
+    while time.time() - start < 1.0:
+        ret, frame = cap.read()
+        if ret:
+            return cap
+
+    cap.release()
+    return None
+
+
+def find_cameras(max_tested=10):
     available = []
 
-    for i in range(devices_number):
-        cap = cv2.VideoCapture(i)
-        if cap.isOpened():
-            ret, frame = cap.read()
-            if ret:
-                available.append(cap)
-            else:
-                cap.release()
-        else:
-            cap.release()
+    for i in range(max_tested):
+        cap = try_open_camera(i)
+        if cap:
+            available.append(cap)
 
         if len(available) == 2:
             return available
 
     for cap in available:
         cap.release()
-    raise CameraError
+
+    raise CameraError("Nie znaleziono dwóch działających kamer.")
 
 
 def start_cameras():
@@ -50,14 +53,16 @@ def start_cameras():
         ret1, frame_front = cams[0].read()
         ret2, frame_side = cams[1].read()
 
-        cv2.imshow('Front View',frame_front)
-        cv2.imshow('Side View',frame_side)
-
-        if cv2.getWindowProperty('Front View',cv2.WND_PROP_VISIBLE) < 1:
-            break
-        if cv2.getWindowProperty('Side View',cv2.WND_PROP_VISIBLE) < 1:
+        if not ret1 or not ret2:
+            print("Kamera przestała zwracać klatki")
             break
 
-    cams[0].release()
-    cams[1].release()
+        cv2.imshow('Front View', frame_front)
+        cv2.imshow('Side View', frame_side)
+
+        if cv2.waitKey(1) & 0xFF == 27:
+            break
+
+    for cam in cams:
+        cam.release()
     cv2.destroyAllWindows()
