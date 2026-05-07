@@ -4,17 +4,17 @@ import time
 class CameraError(Exception):
     pass
 
+
+#Testuje pojedyńczą kamerę
 def try_open_camera(index):
-    cap = cv2.VideoCapture(index, cv2.CAP_MSMF)
+    try:
+        cap = cv2.VideoCapture(index, cv2.CAP_MSMF)
+    except Exception:
+        return None
 
     if not cap.isOpened():
         return None
 
-    # Wymuszenie rozdzielczości – kluczowe na Windowsie
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
-    # Timeout 1 sekunda na pierwszą klatkę
     start = time.time()
     while time.time() - start < 1.0:
         ret, frame = cap.read()
@@ -24,7 +24,7 @@ def try_open_camera(index):
     cap.release()
     return None
 
-
+#Szuka dostępnych kamer
 def find_cameras(max_tested=10):
     available = []
 
@@ -41,21 +41,16 @@ def find_cameras(max_tested=10):
 
     raise CameraError("Nie znaleziono dwóch działających kamer.")
 
-
+#Uruchamia okna z dwóch znalezionych kamery
 def start_cameras():
-    try:
-        cams = find_cameras()
-    except CameraError:
-        print("Problem z kamerą/kamerami")
-        return
+    cams = find_cameras()
 
     while True:
         ret1, frame_front = cams[0].read()
         ret2, frame_side = cams[1].read()
 
         if not ret1 or not ret2:
-            print("Kamera przestała zwracać klatki")
-            break
+            raise CameraError("Kamera przestała zwracać klatki.")
 
         cv2.imshow('Front View', frame_front)
         cv2.imshow('Side View', frame_side)
