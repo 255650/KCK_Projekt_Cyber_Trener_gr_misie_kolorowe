@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QVBoxLayout,
     QTableWidget,
-    QTableWidgetItem,
+    QTableWidgetItem, QHBoxLayout,
 )
 from camera.modul_kamer import find_cameras
 from PySide6.QtCore import Qt, QTimer
@@ -23,41 +23,54 @@ class TrainingWindow(QWidget):
 
         self.cams = cams
 
-        layout = QVBoxLayout()
+        # 🔥 2 kolumny
+        layout = QHBoxLayout()
 
-        self.camera_label = QLabel()
-        self.camera_label.setAlignment(Qt.AlignCenter)
+        self.front_label = QLabel()
+        self.side_label = QLabel()
 
-        layout.addWidget(self.camera_label)
+        for label in [self.front_label, self.side_label]:
+            label.setAlignment(Qt.AlignCenter)
+            label.setStyleSheet("background-color: black;")
+
+        layout.addWidget(self.front_label)
+        layout.addWidget(self.side_label)
+
         self.setLayout(layout)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
-        self.timer.start(30)  # ~30 FPS
+        self.timer.start(30)
 
+def update_frame(self):
+    if len(self.cams) < 2:
+        return
 
-    def update_frame(self):
-        ret1, frame = self.cams[0].read()
+    ret1, front = self.cams[0].read()
+    ret2, side = self.cams[1].read()
 
-        if not ret1:
-            return
+    if ret1:
+        self.show_frame(front, self.front_label)
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    if ret2:
+        self.show_frame(side, self.side_label)
+def show_frame(self, frame, label):
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        h, w, ch = frame.shape
-        bytes_per_line = ch * w
+    h, w, ch = frame.shape
+    bytes_per_line = ch * w
 
-        qt_img = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+    qt_img = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
 
-        pixmap = QPixmap.fromImage(qt_img)
+    pixmap = QPixmap.fromImage(qt_img)
 
-        self.camera_label.setPixmap(
-            pixmap.scaled(
-                self.camera_label.width(),
-                self.camera_label.height(),
-                Qt.KeepAspectRatio
-            )
+    label.setPixmap(
+        pixmap.scaled(
+            label.width(),
+            label.height(),
+            Qt.KeepAspectRatio
         )
+    )
 
 class HistoryWindow(QWidget):
     def __init__(self):
@@ -165,7 +178,6 @@ class MainWindow(QWidget):
     def open_history(self):
         self.history_window = HistoryWindow()
         self.history_window.show()
-
 
 app = QApplication(sys.argv)
 cams = find_cameras()
