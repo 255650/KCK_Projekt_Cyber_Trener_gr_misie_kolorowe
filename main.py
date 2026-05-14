@@ -5,11 +5,12 @@ from PySide6.QtWidgets import QApplication
 from camera.modul_kamer import find_cameras
 from gui.gui_start import MainWindow
 
-app = QApplication(sys.argv)
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
 
-cams = find_cameras()
+    cams = find_cameras()
 
-window = MainWindow(cams)
-window.show()
+    window = MainWindow(cams)
+    window.show()
 
-sys.exit(app.exec())
+    sys.exit(app.exec())

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from camera.modul_kamer import find_cameras
 from PySide6.QtCore import Qt, QTimer
+from camera.kamera_przednia import process_front_frame
 
 
 class TrainingWindow(QWidget):
@@ -50,6 +51,7 @@ class TrainingWindow(QWidget):
         ret2, side = self.cams[1].read()
 
         if ret1:
+            front = process_front_frame(front)
             self.show_frame(front, self.front_label)
 
         if ret2:
@@ -179,10 +181,3 @@ class MainWindow(QWidget):
     def open_history(self):
         self.history_window = HistoryWindow()
         self.history_window.show()
-
-app = QApplication(sys.argv)
-cams = find_cameras()
-window = MainWindow(cams)
-window.show()
-
-sys.exit(app.exec())
