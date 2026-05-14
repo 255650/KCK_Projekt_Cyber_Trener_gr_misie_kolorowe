@@ -26,20 +26,20 @@ def try_open_camera(index):
 
 #Szuka dostępnych kamer
 def find_cameras(max_tested=10):
+
     available = []
 
     for i in range(max_tested):
+
         cap = try_open_camera(i)
+
         if cap:
             available.append(cap)
 
-        if len(available) == 2:
-            return available
+    if len(available) == 0:
+        raise CameraError("Nie znaleziono żadnej kamery.")
 
-    for cap in available:
-        cap.release()
-
-    raise CameraError("Nie znaleziono dwóch działających kamer.")
+    return available
 
 #Uruchamia okna z dwóch znalezionych kamery
 def start_cameras():
