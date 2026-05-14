@@ -12,7 +12,6 @@ pose_front = mp_pose.Pose(
     min_tracking_confidence=0.5
 )
 
-
 def analizuj_przod(punkty):
     alerty = []
 

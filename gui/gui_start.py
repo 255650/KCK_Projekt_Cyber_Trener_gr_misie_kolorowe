@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from camera.modul_kamer import find_cameras
 from PySide6.QtCore import Qt, QTimer
 from camera.kamera_przednia import process_front_frame
+from camera.kamera_boczna import process_side_frame
 
 
 class TrainingWindow(QWidget):
@@ -55,6 +56,7 @@ class TrainingWindow(QWidget):
             self.show_frame(front, self.front_label)
 
         if ret2:
+            side = process_side_frame(side)
             self.show_frame(side, self.side_label)
 
     def show_frame(self, frame, label):
