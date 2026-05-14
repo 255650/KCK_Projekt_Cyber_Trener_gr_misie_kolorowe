@@ -42,35 +42,36 @@ class TrainingWindow(QWidget):
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(30)
 
-def update_frame(self):
-    if len(self.cams) < 2:
-        return
+    def update_frame(self):
+        if len(self.cams) < 2:
+            return
 
-    ret1, front = self.cams[0].read()
-    ret2, side = self.cams[1].read()
+        ret1, front = self.cams[0].read()
+        ret2, side = self.cams[1].read()
 
-    if ret1:
-        self.show_frame(front, self.front_label)
+        if ret1:
+            self.show_frame(front, self.front_label)
 
-    if ret2:
-        self.show_frame(side, self.side_label)
-def show_frame(self, frame, label):
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if ret2:
+            self.show_frame(side, self.side_label)
 
-    h, w, ch = frame.shape
-    bytes_per_line = ch * w
+    def show_frame(self, frame, label):
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    qt_img = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        h, w, ch = frame.shape
+        bytes_per_line = ch * w
 
-    pixmap = QPixmap.fromImage(qt_img)
+        qt_img = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
 
-    label.setPixmap(
-        pixmap.scaled(
-            label.width(),
-            label.height(),
-            Qt.KeepAspectRatio
+        pixmap = QPixmap.fromImage(qt_img)
+
+        label.setPixmap(
+            pixmap.scaled(
+                label.width(),
+                label.height(),
+                Qt.KeepAspectRatio
+            )
         )
-    )
 
 class HistoryWindow(QWidget):
     def __init__(self):
