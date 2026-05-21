@@ -25,7 +25,6 @@ class TrainingWindow(QWidget):
 
         self.cams = cams
 
-        # 🔥 2 kolumny
         layout = QHBoxLayout()
 
         self.front_label = QLabel()
