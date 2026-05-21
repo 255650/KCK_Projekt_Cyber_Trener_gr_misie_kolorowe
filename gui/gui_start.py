@@ -14,7 +14,7 @@ from camera.modul_kamer import find_cameras
 from PySide6.QtCore import Qt, QTimer
 from camera.kamera_przednia import process_front_frame
 from camera.kamera_boczna import process_side_frame
-
+from database.db_manager import get_training_history
 
 class TrainingWindow(QWidget):
     def __init__(self, cams):
@@ -89,8 +89,10 @@ class HistoryWindow(QWidget):
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 28px; font-weight: bold;")
 
+        dane_z_bazy = get_training_history()
+
         table = QTableWidget()
-        table.setRowCount(3)
+        table.setRowCount(len(dane_z_bazy))
         table.setColumnCount(3)
 
         table.setHorizontalHeaderLabels([
@@ -99,19 +101,14 @@ class HistoryWindow(QWidget):
             "Technika"
         ])
 
-        # Przykładowe dane narazie
-        data = [
-            ["2026-05-01", "10", "82%"],
-            ["2026-05-03", "12", "88%"],
-            ["2026-05-05", "9", "79%"],
-        ]
-
-        for row in range(len(data)):
-            for col in range(len(data[row])):
+        #Wypełnienie tabelę danymi z bazy
+        for row in range(len(dane_z_bazy)):
+            for col in range(len(dane_z_bazy[row])):
+                wartość_tekstowa = str(dane_z_bazy[row][col])
                 table.setItem(
                     row,
                     col,
-                    QTableWidgetItem(data[row][col])
+                    QTableWidgetItem(wartość_tekstowa)
                 )
 
         layout.addWidget(title)
@@ -182,3 +179,4 @@ class MainWindow(QWidget):
     def open_history(self):
         self.history_window = HistoryWindow()
         self.history_window.show()
+

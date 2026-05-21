@@ -11,7 +11,7 @@ def init_db():
     cursor.execute(
         'CREATE TABLE IF NOT EXISTS treningi '
         '(id INTEGER PRIMARY KEY AUTOINCREMENT, '
-        'data TEXT DEFAULT (date("now")), '
+        'data TEXT DEFAULT CURRENT_DATE, '
         'powtorzenia INTEGER NOT NULL, '
         'technika TEXT NOT NULL)')
 
