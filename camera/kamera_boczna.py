@@ -2,7 +2,6 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
@@ -45,15 +44,16 @@ def calculate_angle(a, b, c):
     return angle
 
 
-last_phase = "GÓRA"
+# Zunifikowane nazwy faz na "DOWN" i "UP", żeby pasowały do logiki warunkowej
+last_phase = "UP"
 
 def get_phase(hip_angle):
     global last_phase
 
     if hip_angle > 158:
-        last_phase = "GÓRA"
+        last_phase = "UP"
     elif hip_angle < 142:
-        last_phase = "DÓŁ"
+        last_phase = "DOWN"
 
     return last_phase
 
@@ -69,17 +69,19 @@ def knee_zone(angle):
         return "POZA ZAKRESEM RUCHU"
 
 
-def analyze_rdl(landmarks):
+# KROK 1: Przekazujemy słownik z indeksami wybranego boku ciała
+def analyze_rdl(landmarks, p_idx):
     if not landmarks:
-        return [], False
+        return [], False, "UP"
 
     alerts = []
 
-    bark = [landmarks[11].x, landmarks[11].y]
-    biodro = [landmarks[23].x, landmarks[23].y]
-    kolano = [landmarks[25].x, landmarks[25].y]
-    kostka = [landmarks[27].x, landmarks[27].y]
-    nadgarstek = [landmarks[15].x, landmarks[15].y]
+    # Mapowanie punktów na podstawie przesłanych indeksów bezpiecznego boku
+    bark = [landmarks[p_idx["bark"]].x, landmarks[p_idx["bark"]].y]
+    biodro = [landmarks[p_idx["biodro"]].x, landmarks[p_idx["biodro"]].y]
+    kolano = [landmarks[p_idx["kolano"]].x, landmarks[p_idx["kolano"]].y]
+    kostka = [landmarks[p_idx["kostka"]].x, landmarks[p_idx["kostka"]].y]
+    nadgarstek = [landmarks[p_idx["nadgarstek"]].x, landmarks[p_idx["nadgarstek"]].y]
 
     knee_angle_raw = calculate_angle(biodro, kolano, kostka)
     hip_angle_raw = calculate_angle(bark, biodro, kolano)
@@ -89,31 +91,41 @@ def analyze_rdl(landmarks):
 
     phase = get_phase(hip_angle)
 
-    knee_state = knee_zone(knee_angle)
-    if knee_state != "OK":
-        alerts.append(f"KOLANA: {knee_state}")
+    # Kolana sprawdzamy głównie w górze i w trakcie zejścia,
+    # ale z większą tolerancją w dolnej fazie
+    if phase == "UP":
+        if knee_angle < 145:
+            alerts.append("KOLANA: ZA MOCNO UGIETE")
+    elif phase == "DOWN":
+        if knee_angle < 135:
+            alerts.append("KOLANA: ZA MOCNO UGIETE")
 
-    if abs(nadgarstek[0] - kolano[0]) > 0.12:
-        alerts.append("CIĘŻAR: TRZYMAJ BLIŻEJ NÓG")
+    # Ciężar też ma większą tolerancję, bo z boku punkty mogą pływać
+    if abs(nadgarstek[0] - kolano[0]) > 0.18:
+        alerts.append("CIEZAR: TRZYMAJ BLIZEJ NOG")
 
-    if phase == "DOWN" and hip_angle < 120:
-        alerts.append("BIODRA: ZBYT NISKO, KONTROLUJ RUCH")
+    # Biodra — nie blokujemy normalnego zejścia w RDL
+    if phase == "DOWN" and hip_angle < 95:
+        alerts.append("BIODRA: ZA NISKO")
 
     start_powtorzenia = (phase == "DOWN")
 
-    return alerts, start_powtorzenia
+    return alerts, start_powtorzenia, phase
 
 
-def proste_plecy(landmarks):
-    nos = [landmarks[0].x, landmarks[0].y]
-    bark = [landmarks[11].x, landmarks[11].y]
-    biodro = [landmarks[23].x, landmarks[23].y]
+# KROK 2: Funkcja pleców również przyjmuje dynamiczne indeksy boku
+def proste_plecy(landmarks, p_idx):
+    bark = [landmarks[p_idx["bark"]].x, landmarks[p_idx["bark"]].y]
+    biodro = [landmarks[p_idx["biodro"]].x, landmarks[p_idx["biodro"]].y]
+    kolano = [landmarks[p_idx["kolano"]].x, landmarks[p_idx["kolano"]].y]
 
-    kat_plecow = calculate_angle(nos, bark, biodro)
-    kat_plecow = smooth_angle("back", kat_plecow)
+    # Kąt tułowia względem uda
+    kat_tulowia = calculate_angle(bark, biodro, kolano)
+    kat_tulowia = smooth_angle("back", kat_tulowia)
 
-    if kat_plecow < 165:
-        return False, "PLECY: UTRZYMAJ NEUTRALNĄ POZYCJĘ"
+    # Większa tolerancja, żeby nie krzyczało cały czas
+    if kat_tulowia < 95:
+        return False, "PLECY: NIE ZAOKRAGLAJ PLECOW"
 
     return True, ""
 
@@ -133,8 +145,19 @@ def process_side_frame(frame):
         mp_pose.POSE_CONNECTIONS
     )
 
-    alerts, start_rep = analyze_rdl(landmarks)
-    back_ok, back_alert = proste_plecy(landmarks)
+    # KROK 3: WYKORZYSTANIE 3 WYMIARU (OŚ Z)
+    # Sprawdzamy głębokość lewego (23) i prawego (24) biodra.
+    # Mniejsza (bardziej ujemna) wartość oznacza punkt bliżej obiektywu kamery.
+    if landmarks[23].z < landmarks[24].z:
+        # Lewy bok jest bliżej kamery - bierzemy lewe indeksy
+        p_idx = {"bark": 11, "biodro": 23, "kolano": 25, "kostka": 27, "nadgarstek": 15}
+    else:
+        # Prawy bok jest bliżej kamery - bierzemy prawe indeksy
+        p_idx = {"bark": 12, "biodro": 24, "kolano": 26, "kostka": 28, "nadgarstek": 16}
+
+    # Przekazujemy odfiltrowane indeksy boku do funkcji analitycznych
+    alerts, start_rep, phase = analyze_rdl(landmarks, p_idx)
+    back_ok, back_alert = proste_plecy(landmarks, p_idx)
 
     if not back_ok:
         alerts.append(back_alert)
@@ -167,7 +190,17 @@ def process_side_frame(frame):
     if start_rep:
         cv2.putText(
             frame,
-            "FAZA: RUCH W DÓŁ",
+            "FAZA: RUCH W DOL",
+            (30, y + 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 0),
+            2
+        )
+    elif phase == "UP":
+        cv2.putText(
+            frame,
+            "FAZA: RUCH W GORE",
             (30, y + 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
