@@ -37,18 +37,37 @@ def analizuj_przod(punkty):
 
     if stosunek_rozkroku < 1.0:
         alerty.append("ROZKROK: Za wasko!")
-    elif stosunek_rozkroku > 1.5:
+    elif stosunek_rozkroku > 1.8:
         alerty.append("ROZKROK: Za szeroko!")
 
     roznica_barkow = abs(lewy_bark[1] - prawy_bark[1])
 
-    if roznica_barkow > 0.03:
+    tolerancja_barkow = 0.03
+
+    if roznica_barkow > tolerancja_barkow:
         alerty.append("SYMETRIA: Barki nierowno!")
 
-    if lewe_kolano[0] > lewa_kostka[0]:
+    roznica_bioder = abs(lewe_biodro[1] - prawe_biodro[1])
+
+    tolerancja_bioder = 0.03
+
+    if roznica_bioder > tolerancja_bioder:
+        alerty.append("SYMETRIA: Biodra nierowno!")
+
+    srodek_barkow_x = (lewy_bark[0] + prawy_bark[0]) / 2
+    srodek_bioder_x = (lewe_biodro[0] + prawe_biodro[0]) / 2
+
+    tolerancja_przesuniecia = 0.03
+
+    if abs(srodek_barkow_x - srodek_bioder_x) > tolerancja_przesuniecia:
+        alerty.append("Tułów uciekaja na bok!")
+
+    tolerancja_kolan = 0.02
+
+    if lewe_kolano[0] > lewa_kostka[0] + tolerancja_kolan:
         alerty.append("KOLANA: Lewe kolano ucieka do srodka!")
 
-    if prawe_kolano[0] < prawa_kostka[0]:
+    if prawe_kolano[0] < prawa_kostka[0] - tolerancja_kolan:
         alerty.append("KOLANA: Prawe kolano ucieka do srodka!")
 
     return alerty
