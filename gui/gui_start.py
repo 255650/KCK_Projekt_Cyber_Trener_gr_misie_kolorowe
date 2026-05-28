@@ -1,3 +1,4 @@
+# gui_start.py (zamień istniejący plik jeśli chcesz widzieć combined tech i rep_count)
 import sys
 import cv2
 from PySide6.QtGui import QPixmap, QImage
@@ -14,6 +15,7 @@ from camera.modul_kamer import find_cameras
 from PySide6.QtCore import Qt, QTimer
 from camera.kamera_przednia import process_front_frame
 from camera.kamera_boczna import process_side_frame
+from camera.analiza import get_combined_tech, get_rep_count
 from database.db_manager import get_training_history
 
 class TrainingWindow(QWidget):
@@ -25,8 +27,18 @@ class TrainingWindow(QWidget):
 
         self.cams = cams
 
-        layout = QHBoxLayout()
+        main_layout = QVBoxLayout()
+        top_bar = QHBoxLayout()
+        self.tech_label = QLabel("TECHNIKA: 0%")
+        self.rep_label = QLabel("POWTORZENIA: 0")
+        for lbl in (self.tech_label, self.rep_label):
+            lbl.setStyleSheet("font-size: 16px; font-weight: bold;")
+            lbl.setFixedHeight(30)
+        top_bar.addWidget(self.tech_label)
+        top_bar.addStretch()
+        top_bar.addWidget(self.rep_label)
 
+        layout = QHBoxLayout()
         self.front_label = QLabel()
         self.side_label = QLabel()
 
@@ -37,7 +49,9 @@ class TrainingWindow(QWidget):
         layout.addWidget(self.front_label)
         layout.addWidget(self.side_label)
 
-        self.setLayout(layout)
+        main_layout.addLayout(top_bar)
+        main_layout.addLayout(layout)
+        self.setLayout(main_layout)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
@@ -51,23 +65,28 @@ class TrainingWindow(QWidget):
         ret2, side = self.cams[1].read()
 
         if ret1:
-            front = process_front_frame(front)
-            self.show_frame(front, self.front_label)
-
+            front_proc = process_front_frame(front)
+            # process_front_frame returns frame (compatibility kept)
+            self.show_frame(front_proc, self.front_label)
         if ret2:
-            side = process_side_frame(side)
-            self.show_frame(side, self.side_label)
+            side_proc = process_side_frame(side)
+            self.show_frame(side_proc, self.side_label)
+
+        # minimalne dodatkowe wyświetlanie (bez wpływu na logikę)
+        try:
+            combined = get_combined_tech()
+            reps = get_rep_count()
+            self.tech_label.setText(f"TECHNIKA: {combined}%")
+            self.rep_label.setText(f"POWTORZENIA: {reps}")
+        except Exception:
+            pass
 
     def show_frame(self, frame, label):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
         h, w, ch = frame.shape
         bytes_per_line = ch * w
-
         qt_img = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-
         pixmap = QPixmap.fromImage(qt_img)
-
         label.setPixmap(
             pixmap.scaled(
                 label.width(),

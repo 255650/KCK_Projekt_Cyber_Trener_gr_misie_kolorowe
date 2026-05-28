@@ -1,118 +1,80 @@
+# camera/kamera_przednia.py
 import cv2
 import mediapipe as mp
-
+import numpy as np
+from camera.analiza import update_front
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
+POSE_FRONT = mp_pose.Pose(static_image_mode=False, model_complexity=1,
+                          min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-pose_front = mp_pose.Pose(
-    static_image_mode=False,
-    model_complexity=1,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+SYMMETRY_TOL = 0.04
+FOOT_HIP_RATIO_MIN = 0.8
+FOOT_HIP_RATIO_MAX = 1.8
 
-def analizuj_przod(punkty):
-    alerty = []
-
-    lewy_bark = [punkty[11].x, punkty[11].y]
-    prawy_bark = [punkty[12].x, punkty[12].y]
-
-    lewe_biodro = [punkty[23].x, punkty[23].y]
-    prawe_biodro = [punkty[24].x, punkty[24].y]
-
-    lewe_kolano = [punkty[25].x, punkty[25].y]
-    prawe_kolano = [punkty[26].x, punkty[26].y]
-
-    lewa_kostka = [punkty[27].x, punkty[27].y]
-    prawa_kostka = [punkty[28].x, punkty[28].y]
-
-    szerokosc_bioder = abs(lewe_biodro[0] - prawe_biodro[0])
-    szerokosc_stop = abs(lewa_kostka[0] - prawa_kostka[0])
-
-    if szerokosc_bioder == 0:
-        return alerty
-
-    stosunek_rozkroku = szerokosc_stop / szerokosc_bioder
-
-    if stosunek_rozkroku < 1.0:
-        alerty.append("ROZKROK: Za wasko!")
-    elif stosunek_rozkroku > 1.8:
-        alerty.append("ROZKROK: Za szeroko!")
-
-    roznica_barkow = abs(lewy_bark[1] - prawy_bark[1])
-
-    tolerancja_barkow = 0.03
-
-    if roznica_barkow > tolerancja_barkow:
-        alerty.append("SYMETRIA: Barki nierowno!")
-
-    roznica_bioder = abs(lewe_biodro[1] - prawe_biodro[1])
-
-    tolerancja_bioder = 0.03
-
-    if roznica_bioder > tolerancja_bioder:
-        alerty.append("SYMETRIA: Biodra nierowno!")
-
-    srodek_barkow_x = (lewy_bark[0] + prawy_bark[0]) / 2
-    srodek_bioder_x = (lewe_biodro[0] + prawe_biodro[0]) / 2
-
-    tolerancja_przesuniecia = 0.03
-
-    if abs(srodek_barkow_x - srodek_bioder_x) > tolerancja_przesuniecia:
-        alerty.append("Tułów uciekaja na bok!")
-
-    tolerancja_kolan = 0.02
-
-    if lewe_kolano[0] > lewa_kostka[0] + tolerancja_kolan:
-        alerty.append("KOLANA: Lewe kolano ucieka do srodka!")
-
-    if prawe_kolano[0] < prawa_kostka[0] - tolerancja_kolan:
-        alerty.append("KOLANA: Prawe kolano ucieka do srodka!")
-
-    return alerty
-
+def calculate_angle(a, b, c):
+    a = np.array(a); b = np.array(b); c = np.array(c)
+    radians = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
+    angle = abs(radians * 180.0 / np.pi)
+    if angle > 180.0:
+        angle = 360 - angle
+    return angle
 
 def process_front_frame(frame):
+    """
+    Kompatybilne API: przyjmuje BGR frame, rysuje overlay i zwraca frame.
+    Dodatkowo wywołuje update_front(score, max_score).
+    Zmiana: score = max_score - liczba_alertów (każdy alert obniża technikę).
+    """
+    if frame is None:
+        update_front(0, 2)
+        return frame
+
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    res = POSE_FRONT.process(rgb)
+    if not res.pose_landmarks:
+        update_front(0, 2)
+        return frame
 
-    result = pose_front.process(rgb)
+    landmarks = res.pose_landmarks.landmark
+    mp_drawing.draw_landmarks(frame, res.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-    if result.pose_landmarks:
-        punkty = result.pose_landmarks.landmark
+    alerts = []
+    max_score = 2
 
-        mp_drawing.draw_landmarks(
-            frame,
-            result.pose_landmarks,
-            mp_pose.POSE_CONNECTIONS
-        )
+    try:
+        lb = [landmarks[11].x, landmarks[11].y]
+        rb = [landmarks[12].x, landmarks[12].y]
+        lh = [landmarks[23].x, landmarks[23].y]
+        rh = [landmarks[24].x, landmarks[24].y]
+        la = [landmarks[27].x, landmarks[27].y]
+        ra = [landmarks[28].x, landmarks[28].y]
+    except Exception:
+        update_front(0, max_score)
+        return frame
 
-        alerty = analizuj_przod(punkty)
+    # symetria barków
+    if abs(lb[1] - rb[1]) > SYMMETRY_TOL:
+        alerts.append("SYMETRIA BARKOW")
 
-        y = 40
+    # rozstaw stóp vs bioder
+    hip_width = abs(lh[0] - rh[0])
+    foot_width = abs(la[0] - ra[0])
+    if not (hip_width > 0 and FOOT_HIP_RATIO_MIN <= (foot_width / hip_width) <= FOOT_HIP_RATIO_MAX):
+        alerts.append("ROZSTAW STOP")
 
-        for alert in alerty:
-            cv2.putText(
-                frame,
-                alert,
-                (30, y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 0, 255),
-                2
-            )
+    # score = max_score - liczba alertów (więcej alertów -> mniejszy score)
+    score = max(0, max_score - len(alerts))
 
-            y += 35
+    # overlay frontowe
+    y = 10
+    for a in alerts:
+        cv2.putText(frame, a, (10, y+20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+        y += 25
+    if not alerts:
+        cv2.putText(frame, "FRONT: OK", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
 
-        if len(alerty) == 0:
-            cv2.putText(
-                frame,
-                "TECHNIKA POPRAWNA",
-                (30, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 0),
-                2
-            )
-
+    # zaktualizuj centralną analizę (snapshot front)
+    update_front(score, max_score)
     return frame
