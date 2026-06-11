@@ -31,10 +31,14 @@ class TrainingWindow(QWidget):
         top_bar = QHBoxLayout()
         self.tech_label = QLabel("TECHNIKA: 0%")
         self.rep_label = QLabel("POWTORZENIA: 0")
+        self.end_label = QLabel("Naciśnij SPACJĘ lub ESCAPE aby zakończyć trening")
+        self.end_label.setAlignment(Qt.AlignCenter)
         for lbl in (self.tech_label, self.rep_label):
             lbl.setStyleSheet("font-size: 16px; font-weight: bold;")
             lbl.setFixedHeight(30)
         top_bar.addWidget(self.tech_label)
+        top_bar.addStretch()
+        top_bar.addWidget(self.end_label)
         top_bar.addStretch()
         top_bar.addWidget(self.rep_label)
 
@@ -94,6 +98,27 @@ class TrainingWindow(QWidget):
                 Qt.KeepAspectRatio
             )
         )
+
+    def closeEvent(self, event):
+        from database.db_manager import save_training
+
+        self.timer.stop()
+
+        try:
+            koncowe_powtorzenia = get_rep_count()
+            koncowa_technika = f"{get_combined_tech()}%"
+
+            save_training(koncowe_powtorzenia, koncowa_technika)
+            print(f" ZAPISANO TRENING: {koncowe_powtorzenia} powt., {koncowa_technika} techniki.")
+        except Exception as e:
+            print(f"Błąd zapisu do bazy: {e}")
+
+        event.accept()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape or event.key() == Qt.Key_Space:
+            print("Wykryto klawisz końca treningu. Zamykam i zapisuję...")
+            self.close()
 
 class HistoryWindow(QWidget):
     def __init__(self):
