@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem, QHBoxLayout,
 )
+from audio.komunikaty_glosowe import powiedz
 from camera.modul_kamer import find_cameras
 from PySide6.QtCore import Qt, QTimer
 from camera.kamera_przednia import process_front_frame
@@ -217,6 +218,7 @@ class MainWindow(QWidget):
         self.exit_button.clicked.connect(self.close)
 
     def open_training(self):
+        powiedz("Wybrane ćwiczenie: rumuński martwy ciąg")
         self.training_window = TrainingWindow(self.cams)
         self.training_window.show()
 
