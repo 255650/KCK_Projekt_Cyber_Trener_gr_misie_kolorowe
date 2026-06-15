@@ -81,4 +81,6 @@ def process_side_frame(frame):
         cv2.putText(frame, "TECHNIKA OK", (30, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,0), 2)
 
-    return frame
+    is_up = abs(bark.x - biodro.x) < 0.03
+    return frame, alerts, is_up
+

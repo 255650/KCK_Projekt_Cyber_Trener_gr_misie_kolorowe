@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from audio.komunikaty_glosowe import powiedz
-from camera.analiza import get_combined_tech, get_rep_count, reset_session
+from camera.analiza import update_reps, reset_session
 from camera.kamera_boczna import process_side_frame
 from camera.kamera_przednia import process_front_frame
 from database.db_manager import get_training_history
@@ -68,35 +68,31 @@ class TrainingWindow(QWidget):
         ret2, side = self.cams[1].read()
 
         if ret1:
-            front_proc = process_front_frame(front)
+            front_proc, front_alerts, is_down = process_front_frame(front)
             self.show_frame(front_proc, self.front_label)
         if ret2:
-            side_proc = process_side_frame(side)
+            side_proc, side_alerts, is_up = process_side_frame(side)
             self.show_frame(side_proc, self.side_label)
 
-        try:
-            combined = get_combined_tech()
-            reps = get_rep_count()
+        reps, tech_percent = update_reps(is_down, is_up, front_alerts, side_alerts)
 
-            if combined >= 85:
-                bg = "#1f6f3a"
-            elif combined >= 70:
-                bg = "#8a6a1a"
-            else:
-                bg = "#7a1f1f"
+        if tech_percent >= 85:
+            bg = "#1f6f3a"
+        elif tech_percent >= 70:
+            bg = "#8a6a1a"
+        else:
+            bg = "#7a1f1f"
 
-            self.tech_label.setStyleSheet(f"""
-                font-size: 16px;
-                font-weight: bold;
-                padding: 6px;
-                border-radius: 6px;
-                background-color: {bg};
-            """)
+        self.tech_label.setStyleSheet(f"""
+            font-size: 16px;
+            font-weight: bold;
+            padding: 6px;
+            border-radius: 6px;
+            background-color: {bg};
+        """)
 
-            self.tech_label.setText(f"TECHNIKA: {combined}%")
-            self.rep_label.setText(f"POWTORZENIA: {reps}")
-        except Exception:
-            pass
+        self.tech_label.setText(f"TECHNIKA: {tech_percent}%")
+        self.rep_label.setText(f"POWTORZENIA: {reps}")
 
     def show_frame(self, frame, label):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

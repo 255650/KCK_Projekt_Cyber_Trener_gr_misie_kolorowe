@@ -36,6 +36,8 @@ def process_front_frame(frame):
 
     l_bark = lm[11]
     p_bark = lm[12]
+    p_nadgarstek = lm[15]
+    p_kolano = lm[26]
     l_biodro = lm[23]
     p_biodro = lm[24]
     l_kostka = lm[27]
@@ -71,4 +73,7 @@ def process_front_frame(frame):
         cv2.putText(frame, "TECHNIKA OK", (30, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
-    return frame
+
+
+    is_down = p_nadgarstek.y > p_kolano.y + 0.02
+    return frame, alerts, is_down
