@@ -1,9 +1,7 @@
-# gui_start.py (zamień istniejący plik jeśli chcesz widzieć combined tech i rep_count)
-import sys
 import cv2
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtWidgets import (
-    QApplication,
     QWidget,
     QPushButton,
     QLabel,
@@ -11,13 +9,13 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem, QHBoxLayout,
 )
+
 from audio.komunikaty_glosowe import powiedz
-from camera.modul_kamer import find_cameras
-from PySide6.QtCore import Qt, QTimer
-from camera.kamera_przednia import process_front_frame
-from camera.kamera_boczna import process_side_frame
 from camera.analiza import get_combined_tech, get_rep_count
+from camera.kamera_boczna import process_side_frame
+from camera.kamera_przednia import process_front_frame
 from database.db_manager import get_training_history
+
 
 class TrainingWindow(QWidget):
     def __init__(self, cams):
@@ -71,13 +69,11 @@ class TrainingWindow(QWidget):
 
         if ret1:
             front_proc = process_front_frame(front)
-            # process_front_frame returns frame (compatibility kept)
             self.show_frame(front_proc, self.front_label)
         if ret2:
             side_proc = process_side_frame(side)
             self.show_frame(side_proc, self.side_label)
 
-        # minimalne dodatkowe wyświetlanie (bez wpływu na logikę)
         try:
             combined = get_combined_tech()
             reps = get_rep_count()
@@ -145,8 +141,6 @@ class HistoryWindow(QWidget):
             "Powtórzenia",
             "Technika"
         ])
-
-        #Wypełnienie tabelę danymi z bazy
         for row in range(len(dane_z_bazy)):
             for col in range(len(dane_z_bazy[row])):
                 wartość_tekstowa = str(dane_z_bazy[row][col])

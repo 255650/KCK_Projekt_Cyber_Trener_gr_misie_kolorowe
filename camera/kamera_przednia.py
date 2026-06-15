@@ -1,4 +1,3 @@
-# camera/kamera_przednia.py
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -63,18 +62,14 @@ def process_front_frame(frame):
     foot_width = abs(la[0] - ra[0])
     if not (hip_width > 0 and FOOT_HIP_RATIO_MIN <= (foot_width / hip_width) <= FOOT_HIP_RATIO_MAX):
         alerts.append("ROZSTAW STOP")
-
-    # score = max_score - liczba alertów (więcej alertów -> mniejszy score)
     score = max(0, max_score - len(alerts))
 
-    # overlay frontowe
+
     y = 10
     for a in alerts:
         cv2.putText(frame, a, (10, y+20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
         y += 25
     if not alerts:
         cv2.putText(frame, "FRONT: OK", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
-
-    # zaktualizuj centralną analizę (snapshot front)
     update_front(score, max_score)
     return frame
