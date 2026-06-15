@@ -2,6 +2,7 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+from audio.komunikaty_glosowe import powiedz
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
@@ -52,10 +53,12 @@ def process_side_frame(frame):
     #ŁOKIEĆ nie może być niżej niż kolano
     if lokiec.y > kolano.y + ELBOW_BELOW_KNEE_TOL:
         alerts.append("SZTANGA ZA NISKO")
+        powiedz("Nie opuszczaj sztangi tak nisko")
 
     #BARK nie może być niżej niż biodro
     if bark.y > biodro.y:
         alerts.append("ZA NISKO")
+        powiedz("Nie schodź tak nisko")
 
     #KOLANO odpowiedni kąt
     k_angle = knee_angle(
@@ -65,6 +68,7 @@ def process_side_frame(frame):
     )
     if not (150 <= k_angle <= 175):
         alerts.append("KOLANO")
+        powiedz("Popraw ustawienie kolan")
 
     # Rysowanie alertów
     y = 40
