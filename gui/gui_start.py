@@ -157,6 +157,25 @@ class HistoryWindow(QWidget):
             margin-bottom: 10px;
         """)
 
+        self.clear_btn = QPushButton("WYCZYŚĆ HISTORIĘ")
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #aa3333;
+                color: white;
+                font-weight: bold;
+                padding: 8px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #cc4444;
+            }
+            QPushButton:pressed {
+                background-color: #882222;
+            }
+        """)
+
+        self.clear_btn.clicked.connect(self.clear_history)
+
         dane_z_bazy = get_training_history()
 
         table = QTableWidget()
@@ -193,16 +212,89 @@ class HistoryWindow(QWidget):
         """)
         for row in range(len(dane_z_bazy)):
             for col in range(len(dane_z_bazy[row])):
-                table.setItem(
-                    row,
-                    col,
-                    QTableWidgetItem(str(dane_z_bazy[row][col]))
-                )
+                table.setItem(row, col, QTableWidgetItem(str(dane_z_bazy[row][col])))
 
         layout.addWidget(title)
+        layout.addWidget(self.clear_btn)
         layout.addWidget(table)
 
         self.setLayout(layout)
+
+    def clear_history(self):
+        from database.db_manager import clear_training_history
+        clear_training_history()
+
+        self.close()
+        self.new_window = HistoryWindow()
+        self.new_window.show()
+
+
+class DifficultyWindow(QWidget):
+    def __init__(self, cams):
+        super().__init__()
+
+        self.cams = cams
+
+        self.setWindowTitle("Wybór trudności")
+        self.resize(500, 400)
+
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #1e1e1e;
+                color: white;
+            }
+        """)
+
+        layout = QVBoxLayout()
+
+        title = QLabel("WYBÓR TRUDNOŚCI")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("""
+            font-size: 28px;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 30px;
+        """)
+
+        self.easy_btn = QPushButton("ŁATWY")
+        self.medium_btn = QPushButton("ŚREDNI")
+        self.hard_btn = QPushButton("TRUDNY")
+
+        for btn in (self.easy_btn, self.medium_btn, self.hard_btn):
+            btn.setFixedHeight(60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 18px;
+                    font-weight: bold;
+                    background-color: #00a8ff;
+                    color: white;
+                    border-radius: 12px;
+                }
+                QPushButton:hover {
+                    background-color: #0090dd;
+                }
+                QPushButton:pressed {
+                    background-color: #0077bb;
+                }
+            """)
+            layout.addWidget(btn)
+
+        layout.insertWidget(0, title)
+
+        self.setLayout(layout)
+
+        self.easy_btn.clicked.connect(lambda: self.start_training("łatwy"))
+        self.medium_btn.clicked.connect(lambda: self.start_training("średni"))
+        self.hard_btn.clicked.connect(lambda: self.start_training("trudny"))
+
+    def start_training(self, level):
+        powiedz(f"Wybrano poziom: {level}")
+        reset_session()
+        self.training_window = TrainingWindow(self.cams)
+        self.training_window.show()
+        self.close()
+
+
 
 class MainWindow(QWidget):
     def __init__(self,cams):
@@ -278,7 +370,7 @@ class MainWindow(QWidget):
 
         layout.addWidget(status)
 
-        self.start_button.clicked.connect(self.open_training)
+        self.start_button.clicked.connect(self.open_difficulty)
         self.history_button.clicked.connect(self.open_history)
         self.exit_button.clicked.connect(self.close)
 
@@ -292,3 +384,6 @@ class MainWindow(QWidget):
         self.history_window = HistoryWindow()
         self.history_window.show()
 
+    def open_difficulty(self):
+        self.difficulty_window = DifficultyWindow(self.cams)
+        self.difficulty_window.show()
