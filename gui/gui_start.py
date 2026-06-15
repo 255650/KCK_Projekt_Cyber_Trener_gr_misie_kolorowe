@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from audio.komunikaty_glosowe import powiedz
-from camera.analiza import get_combined_tech, get_rep_count
+from camera.analiza import get_combined_tech, get_rep_count, reset_session
 from camera.kamera_boczna import process_side_frame
 from camera.kamera_przednia import process_front_frame
 from database.db_manager import get_training_history
@@ -77,6 +77,22 @@ class TrainingWindow(QWidget):
         try:
             combined = get_combined_tech()
             reps = get_rep_count()
+
+            if combined >= 85:
+                bg = "#1f6f3a"
+            elif combined >= 70:
+                bg = "#8a6a1a"
+            else:
+                bg = "#7a1f1f"
+
+            self.tech_label.setStyleSheet(f"""
+                font-size: 16px;
+                font-weight: bold;
+                padding: 6px;
+                border-radius: 6px;
+                background-color: {bg};
+            """)
+
             self.tech_label.setText(f"TECHNIKA: {combined}%")
             self.rep_label.setText(f"POWTORZENIA: {reps}")
         except Exception:
@@ -124,11 +140,22 @@ class HistoryWindow(QWidget):
         self.setWindowTitle("Historia treningów")
         self.resize(700, 400)
 
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #1e1e1e;
+                color: white;
+            }
+        """)
         layout = QVBoxLayout()
 
-        title = QLabel("Historia treningów")
+        title = QLabel("HISTORIA TRENINGÓW")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 28px; font-weight: bold;")
+        title.setStyleSheet("""
+            font-size: 28px;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        """)
 
         dane_z_bazy = get_training_history()
 
@@ -137,24 +164,45 @@ class HistoryWindow(QWidget):
         table.setColumnCount(3)
 
         table.setHorizontalHeaderLabels([
-            "Data",
-            "Powtórzenia",
-            "Technika"
+            "DATA",
+            "POWTÓRZENIA",
+            "TECHNIKA"
         ])
+        table.setStyleSheet("""
+            QTableWidget {
+                background-color: #2a2a2a;
+                border: none;
+                gridline-color: #444;
+            }
+
+            QHeaderView::section {
+                background-color: #00a8ff;
+                color: white;
+                padding: 6px;
+                font-weight: bold;
+                border: none;
+            }
+
+            QTableWidget::item {
+                padding: 6px;
+            }
+
+            QTableWidget::item:selected {
+                background-color: #0077bb;
+            }
+        """)
         for row in range(len(dane_z_bazy)):
             for col in range(len(dane_z_bazy[row])):
-                wartość_tekstowa = str(dane_z_bazy[row][col])
                 table.setItem(
                     row,
                     col,
-                    QTableWidgetItem(wartość_tekstowa)
+                    QTableWidgetItem(str(dane_z_bazy[row][col]))
                 )
 
         layout.addWidget(title)
         layout.addWidget(table)
 
         self.setLayout(layout)
-
 
 class MainWindow(QWidget):
     def __init__(self,cams):
@@ -164,15 +212,23 @@ class MainWindow(QWidget):
         self.setWindowTitle("Cyber Trener")
         self.resize(500, 400)
 
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #1e1e1e;
+                color: white;
+            }
+        """)
+
         layout = QVBoxLayout()
 
         title = QLabel("CYBER TRENER")
         title.setAlignment(Qt.AlignCenter)
 
         title.setStyleSheet("""
-            font-size: 32px;
+            font-size: 40px;
             font-weight: bold;
-            margin-bottom: 30px;
+            color: #00d4ff;
+            margin-bottom: 40px;
         """)
 
         self.start_button = QPushButton("START TRENINGU")
@@ -191,13 +247,18 @@ class MainWindow(QWidget):
             button.setStyleSheet("""
                 QPushButton {
                     font-size: 20px;
-                    background-color: #333;
+                    font-weight: bold;
+                    background-color: #00a8ff;
                     color: white;
-                    border-radius: 10px;
+                    border-radius: 12px;
                 }
 
                 QPushButton:hover {
-                    background-color: #555;
+                    background-color: #0090dd;
+                }
+
+                QPushButton:pressed {
+                    background-color: #0077bb;
                 }
             """)
 
@@ -207,12 +268,23 @@ class MainWindow(QWidget):
 
         self.setLayout(layout)
 
+        status = QLabel("Gotowy do rozpoczęcia treningu?")
+        status.setAlignment(Qt.AlignCenter)
+
+        status.setStyleSheet("""
+            color: #888;
+            font-size: 12px;
+        """)
+
+        layout.addWidget(status)
+
         self.start_button.clicked.connect(self.open_training)
         self.history_button.clicked.connect(self.open_history)
         self.exit_button.clicked.connect(self.close)
 
     def open_training(self):
         powiedz("Wybrane ćwiczenie: rumuński martwy ciąg")
+        reset_session()
         self.training_window = TrainingWindow(self.cams)
         self.training_window.show()
 
