@@ -110,12 +110,13 @@ class TrainingWindow(QWidget):
 
     def closeEvent(self, event):
         from database.db_manager import save_training
+        from camera.analiza import reps, good_frames, total_frames
 
         self.timer.stop()
 
         try:
-            koncowe_powtorzenia = get_rep_count()
-            koncowa_technika = f"{get_combined_tech()}%"
+            koncowe_powtorzenia = reps
+            koncowa_technika = f"{int((good_frames / total_frames) * 100) if total_frames > 0 else 100}%"
 
             save_training(koncowe_powtorzenia, koncowa_technika)
             print(f" ZAPISANO TRENING: {koncowe_powtorzenia} powt., {koncowa_technika} techniki.")
