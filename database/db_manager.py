@@ -10,16 +10,17 @@ def init_db():
         '(id INTEGER PRIMARY KEY AUTOINCREMENT, '
         'data TEXT DEFAULT CURRENT_DATE, '
         'powtorzenia INTEGER NOT NULL, '
-        'technika TEXT NOT NULL)')
+        'technika TEXT NOT NULL, '
+        'poziom TEXT NOT NULL)')
 
     conn.commit() #zapis do bazy
     conn.close()
 
 
-def save_training(powtorzenia, technika):
+def save_training(powtorzenia, technika, poziom):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO treningi (powtorzenia, technika) VALUES (?, ?)', (powtorzenia, technika))
+    cursor.execute('INSERT INTO treningi (powtorzenia, technika, poziom) VALUES (?, ?, ?)', (powtorzenia, technika, poziom))
     conn.commit()
     conn.close()
 
@@ -27,7 +28,7 @@ def save_training(powtorzenia, technika):
 def get_training_history():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('SELECT data, powtorzenia, technika FROM treningi ORDER BY id DESC')
+    cursor.execute('SELECT data, powtorzenia, technika, poziom FROM treningi ORDER BY id DESC')
     rows = cursor.fetchall() #pobranie danych z bazy do listy
     conn.close()
     return rows

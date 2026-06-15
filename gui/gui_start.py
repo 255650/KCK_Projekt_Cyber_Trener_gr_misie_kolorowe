@@ -18,13 +18,19 @@ from database.db_manager import get_training_history
 
 
 class TrainingWindow(QWidget):
-    def __init__(self, cams):
+    def __init__(self, cams, level):
         super().__init__()
 
         self.setWindowTitle("Trening")
         self.resize(1280, 720)
 
         self.cams = cams
+        self.level = level
+        self.target_reps = {
+            "ŁATWY": 5,
+            "ŚREDNI": 10,
+            "TRUDNY": 15
+        }[level]
 
         main_layout = QVBoxLayout()
         top_bar = QHBoxLayout()
@@ -75,6 +81,12 @@ class TrainingWindow(QWidget):
             self.show_frame(side_proc, self.side_label)
 
         reps, tech_percent = update_reps(is_down, is_up, front_alerts, side_alerts)
+        self.rep_label.setText(f"POWTÓRZENIA: {reps}")
+        if reps >= self.target_reps:
+            powiedz("Gratulacje, zakończono trening")
+
+            self.close()
+            return
 
         if tech_percent >= 85:
             bg = "#1f6f3a"
@@ -118,8 +130,8 @@ class TrainingWindow(QWidget):
             koncowe_powtorzenia = reps
             koncowa_technika = f"{int((good_frames / total_frames) * 100) if total_frames > 0 else 100}%"
 
-            save_training(koncowe_powtorzenia, koncowa_technika)
-            print(f" ZAPISANO TRENING: {koncowe_powtorzenia} powt., {koncowa_technika} techniki.")
+            save_training(koncowe_powtorzenia, koncowa_technika, self.level)
+            print(f" ZAPISANO TRENING: {koncowe_powtorzenia} powt., {koncowa_technika} techniki, poziom: {self.level}")
         except Exception as e:
             print(f"Błąd zapisu do bazy: {e}")
 
@@ -177,12 +189,13 @@ class HistoryWindow(QWidget):
 
         table = QTableWidget()
         table.setRowCount(len(dane_z_bazy))
-        table.setColumnCount(3)
+        table.setColumnCount(4)
 
         table.setHorizontalHeaderLabels([
             "DATA",
             "POWTÓRZENIA",
-            "TECHNIKA"
+            "TECHNIKA",
+            "POZIOM"
         ])
         table.setStyleSheet("""
             QTableWidget {
@@ -280,14 +293,14 @@ class DifficultyWindow(QWidget):
 
         self.setLayout(layout)
 
-        self.easy_btn.clicked.connect(lambda: self.start_training("łatwy"))
-        self.medium_btn.clicked.connect(lambda: self.start_training("średni"))
-        self.hard_btn.clicked.connect(lambda: self.start_training("trudny"))
+        self.easy_btn.clicked.connect(lambda: self.start_training("ŁATWY"))
+        self.medium_btn.clicked.connect(lambda: self.start_training("ŚREDNI"))
+        self.hard_btn.clicked.connect(lambda: self.start_training("TRUDNY"))
 
     def start_training(self, level):
         powiedz(f"Wybrano poziom: {level}")
         reset_session()
-        self.training_window = TrainingWindow(self.cams)
+        self.training_window = TrainingWindow(self.cams, level)
         self.training_window.show()
         self.close()
 
