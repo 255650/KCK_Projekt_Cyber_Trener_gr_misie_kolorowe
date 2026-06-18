@@ -66,7 +66,7 @@ def process_side_frame(frame):
         (kolano.x, kolano.y),
         (kostka.x, kostka.y)
     )
-    if not (150 <= k_angle <= 175):
+    if not (130 <= k_angle <= 175):
         alerts.append("KOLANO")
         powiedz("Popraw ustawienie kolan")
 
