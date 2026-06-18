@@ -36,7 +36,7 @@ def process_side_frame(frame):
     if not res.pose_landmarks:
         cv2.putText(frame, "NO LANDMARKS", (30, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,255), 2)
-        return frame
+        return frame, [], False
 
     lm = res.pose_landmarks.landmark
     mp_drawing.draw_landmarks(frame, res.pose_landmarks, mp_pose.POSE_CONNECTIONS)
